@@ -1,0 +1,94 @@
+# voice_assistant.py
+
+import pyttsx3
+import speech_recognition as sr
+import datetime
+import wikipedia
+import pywhatkit
+
+# Setup voice engine
+engine = pyttsx3.init()
+engine.setProperty('rate', 160)  # Slightly slower for clarity
+
+def speak(text):
+    """Speak the given text using the system voice."""
+    print(f"Assistant: {text}")
+    engine.say(text)
+    engine.runAndWait()
+
+def greet_user():
+    """Greet the user based on the time of day."""
+    hour = datetime.datetime.now().hour
+    if hour < 12:
+        greeting = "Good morning"
+    elif hour < 18:
+        greeting = "Good afternoon"
+    else:
+        greeting = "Good evening"
+    
+    speak(f"{greeting}, I'm your assistant. How can I help you today?")
+
+def listen_command():
+    """Listen to user's voice and return text."""
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("🎙️ Listening...")
+        recognizer.pause_threshold = 1
+        try:
+            audio = recognizer.listen(source, timeout=5)
+            query = recognizer.recognize_google(audio, language='en-in')
+            return query.lower()
+        except sr.WaitTimeoutError:
+            speak("I didn't hear anything. Please try again.")
+        except sr.UnknownValueError:
+            speak("Sorry, I couldn't understand.")
+        except sr.RequestError:
+            speak("Network issue.")
+    return ""
+
+def handle_command(command):
+    """Process and respond to voice commands."""
+    if "time" in command:
+        time_now = datetime.datetime.now().strftime("%I:%M %p")
+        speak(f"The time is {time_now}")
+    
+    elif "wikipedia" in command:
+        topic = command.replace("wikipedia", "").strip()
+        if topic:
+            speak(f"Searching Wikipedia for {topic}")
+            try:
+                result = wikipedia.summary(topic, sentences=2)
+                speak(result)
+            except Exception:
+                speak("Couldn't find anything.")
+        else:
+            speak("Please say the topic after 'Wikipedia'")
+    
+    elif "youtube" in command:
+        speak("What should I play?")
+        topic = listen_command()
+        if topic:
+            speak(f"Playing {topic} on YouTube")
+            pywhatkit.playonyt(topic)
+        else:
+            speak("I didn't catch that.")
+    
+    elif "stop" in command or "exit" in command:
+        speak("Goodbye.")
+        return False
+    
+    else:
+        speak("I'm not sure how to respond to that yet.")
+    
+    return True
+
+def main():
+    greet_user()
+    active = True
+    while active:
+        command = listen_command()
+        if command:
+            active = handle_command(command)
+
+if __name__ == "__main__":
+    main()
